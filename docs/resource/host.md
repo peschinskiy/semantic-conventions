@@ -24,7 +24,7 @@ To report host metrics, the `system.*` namespace SHOULD be used.
 | Role | Key | Stability | [Requirement Level](https://opentelemetry.io/docs/specs/semconv/general/attribute-requirement-level/) | Value Type | Description | Example Values |
 | --- | --- | --- | --- | --- | --- | --- |
 | Other | [`host.arch`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | The CPU architecture the host system is running on. | `amd64`; `arm32`; `arm64` |
-| Other | [`host.id`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Unique host ID. For Cloud, this must be the cloud instance ID (EC2/GCE instance ID, Azure `vmId`) along with `cloud.*` and corresponding provider-specific attribute. For non-containerized systems, this should be the `machine-id`. See the table below for the sources to use to determine the `machine-id` based on operating system [1]. For fallback value, see [2] for user-defined `host.id` options.| `fdbf79e8af94cb7f9e8df36789187052` |
+| Other | [`host.id`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Unique host ID. For Cloud, this MUST be the cloud instance ID (EC2/GCE instance ID, Azure `vmId`) along with corresponding provider-specific attribute. For non-containerized systems, this SHOULD be the `machine-id`. See the table below for the sources to use to determine the `machine-id` based on operating system [1]. For fallback value, see [2] for user-defined `host.id` options.| `fdbf79e8af94cb7f9e8df36789187052` |
 | Other | [`host.image.id`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | VM image ID or host OS image ID. For Cloud, this value is from the provider. | `ami-07b06b442921831e5` |
 | Other | [`host.image.name`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Name of the VM image or OS install the host was instantiated from. | `infra-ami-eks-worker-node-7d4ec78312`; `CentOS-8-x86_64-1905` |
 | Other | [`host.image.version`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | The version string of the VM image or host OS as defined in [Version Attributes](/docs/resource/README.md#version-attributes). | `0.1` |
@@ -56,15 +56,15 @@ systems can use the output of `dmidecode -t system`, `dmidecode -t baseboard`,
 (e.g. `cat /sys/devices/virtual/dmi/id/product_id`,
 `cat /sys/devices/virtual/dmi/id/product_uuid`, etc), however, SDK resource
 detector implementations MUST not collect `host.id` from privileged sources. If
-privileged lookup of `host.id` is required, the value should be injected via the
+privileged lookup of `host.id` is required, the value SHOULD be injected via the
 `OTEL_RESOURCE_ATTRIBUTES` environment variable.
 
 **[2] `host.id`:** Collecting `host.id` from user configuration
 
-If none of the above detectors yields a non-empty value, the implementation **may** fail to determine `host.id`. In that case, the `host.id` can only be provided through user configuration or other available options. The value should conform to the following properties:
+If none of the above detectors yields a non-empty value, the implementation MAY fail to determine `host.id`. In that case, the `host.id` can only be provided through user configuration or other available options. The value should conform to the following properties:
 
 * Unique within a given context;
-* Reproducible - multiple observers on the same host come up with the same value;
+* [Repeatable](https://github.com/open-telemetry/opentelemetry-specification/blob/d9f58bb8021f196a4bc57f35c1d07c2d5f908023/specification/entities/data-model.md?plain=1#L65) - multiple observers on the same host come up with the same value;
 * Persistent - survives host restarts and software updates.
 
 **[3] `host.ip`:** IPv4 Addresses MUST be specified in dotted-quad notation. IPv6 addresses MUST be specified in the [RFC 5952](https://www.rfc-editor.org/rfc/rfc5952.html) format.
