@@ -24,22 +24,38 @@ To report host metrics, the `system.*` namespace SHOULD be used.
 | Role | Key | Stability | [Requirement Level](https://opentelemetry.io/docs/specs/semconv/general/attribute-requirement-level/) | Value Type | Description | Example Values |
 | --- | --- | --- | --- | --- | --- | --- |
 | Other | [`host.arch`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | The CPU architecture the host system is running on. | `amd64`; `arm32`; `arm64` |
-| Other | [`host.id`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Unique host ID. For Cloud, this MUST be the cloud instance ID (EC2/GCE instance ID, Azure `vmId`) along with corresponding provider-specific attribute. For non-containerized systems, this SHOULD be the `machine-id`. See the table below for the sources to use to determine the `machine-id` based on operating system [1]. For fallback value, see [2] for user-defined `host.id` options.| `fdbf79e8af94cb7f9e8df36789187052` |
+| Other | [`host.id`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Unique host ID, determined by the first matching source in the priority order. [1] | `fdbf79e8af94cb7f9e8df36789187052` |
 | Other | [`host.image.id`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | VM image ID or host OS image ID. For Cloud, this value is from the provider. | `ami-07b06b442921831e5` |
 | Other | [`host.image.name`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Name of the VM image or OS install the host was instantiated from. | `infra-ami-eks-worker-node-7d4ec78312`; `CentOS-8-x86_64-1905` |
 | Other | [`host.image.version`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | The version string of the VM image or host OS as defined in [Version Attributes](/docs/resource/README.md#version-attributes). | `0.1` |
 | Other | [`host.name`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Name of the host. On Unix systems, it may contain what the hostname command returns, or the fully qualified hostname, or another name specified by the user. | `opentelemetry-test` |
 | Other | [`host.type`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Recommended` | string | Type of host. For Cloud, this must be the machine type. | `n1-standard-1` |
-| Other | [`host.ip`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Opt-In` | string[] | Available IP addresses of the host, excluding loopback interfaces. [3] | `["192.168.1.140", "fe80::abc2:4a28:737a:609e"]` |
-| Other | [`host.mac`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Opt-In` | string[] | Available MAC addresses of the host, excluding loopback interfaces. [4] | `["AC-DE-48-23-45-67", "AC-DE-48-23-45-67-01-9F"]` |
+| Other | [`host.ip`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Opt-In` | string[] | Available IP addresses of the host, excluding loopback interfaces. [2] | `["192.168.1.140", "fe80::abc2:4a28:737a:609e"]` |
+| Other | [`host.mac`](/docs/registry/attributes/host.md) | ![Development](https://img.shields.io/badge/-development-blue) | `Opt-In` | string[] | Available MAC addresses of the host, excluding loopback interfaces. [3] | `["AC-DE-48-23-45-67", "AC-DE-48-23-45-67-01-9F"]` |
 
-**[1] `host.id`:** Collecting `host.id` from non-containerized systems
+**[1] `host.id`:** SHOULD be determined using the first available source from the following priority tiers:
+
+1. Known cloud providers - cloud instance ID
+2. Known VM vendors - provider VM ID
+3. OS-dependent machine ID
+4. User-provided value
+
+When `host.id` is derived from a cloud or VM-vendor instance, the resource SHOULD also carry the corresponding attribute identifying that instance, so that the source of the `host.id` value can be unambiguously determined.
+
+The following environments are currently recognized:
+
+| Environment | `host.id` source |
+| --- | --- |
+| AWS EC2 | EC2 instance ID |
+| AWS EKS | EC2 instance ID |
+| GCP Compute Engine | GCE instance ID |
+| GCP GKE | GCE instance ID |
 
 **Non-privileged Machine ID Lookup**
 
-When collecting `host.id` for non-containerized systems non-privileged lookups
-of the machine id are preferred. SDK detector implementations MUST use the
-sources listed below to obtain the machine id.
+When collecting `host.id` for non-containerized systems, non-privileged lookups
+of the machine ID are preferred. SDK detector implementations MUST use the
+sources listed below to obtain the machine ID.
 
 | OS | Primary | Fallback |
 | --- | --- | --- |
@@ -55,21 +71,21 @@ systems can use the output of `dmidecode -t system`, `dmidecode -t baseboard`,
 `dmidecode -t chassis`, or read the corresponding data from the filesystem
 (e.g. `cat /sys/devices/virtual/dmi/id/product_id`,
 `cat /sys/devices/virtual/dmi/id/product_uuid`, etc), however, SDK resource
-detector implementations MUST not collect `host.id` from privileged sources. If
+detector implementations MUST NOT collect `host.id` from privileged sources. If
 privileged lookup of `host.id` is required, the value SHOULD be injected via the
 `OTEL_RESOURCE_ATTRIBUTES` environment variable.
 
-**[2] `host.id`:** Collecting `host.id` from user configuration
+**Collecting `host.id` From User Configuration**
 
-If none of the above detectors yields a non-empty value, the implementation MAY fail to determine `host.id`. In that case, the `host.id` can only be provided through user configuration or other available options. The value should conform to the following properties:
+If none of the above sources yields a non-empty value, the implementation MAY fail to determine `host.id`. In that case, the `host.id` can only be provided through user configuration or other available manual options. The value should conform to the following properties:
 
 * Unique within a given context;
-* [Repeatable](https://github.com/open-telemetry/opentelemetry-specification/blob/d9f58bb8021f196a4bc57f35c1d07c2d5f908023/specification/entities/data-model.md?plain=1#L65) - multiple observers on the same host come up with the same value;
+* [Repeatable](https://opentelemetry.io/docs/specs/otel/entities/data-model/#repeatable-identity) - multiple observers on the same host come up with the same value;
 * Persistent - survives host restarts and software updates.
 
-**[3] `host.ip`:** IPv4 Addresses MUST be specified in dotted-quad notation. IPv6 addresses MUST be specified in the [RFC 5952](https://www.rfc-editor.org/rfc/rfc5952.html) format.
+**[2] `host.ip`:** IPv4 Addresses MUST be specified in dotted-quad notation. IPv6 addresses MUST be specified in the [RFC 5952](https://www.rfc-editor.org/rfc/rfc5952.html) format.
 
-**[4] `host.mac`:** MAC Addresses MUST be represented in [IEEE RA hexadecimal form](https://standards.ieee.org/wp-content/uploads/import/documents/tutorials/eui.pdf): as hyphen-separated octets in uppercase hexadecimal form from most to least significant.
+**[3] `host.mac`:** MAC Addresses MUST be represented in [IEEE RA hexadecimal form](https://standards.ieee.org/wp-content/uploads/import/documents/tutorials/eui.pdf): as hyphen-separated octets in uppercase hexadecimal form from most to least significant.
 
 ---
 
