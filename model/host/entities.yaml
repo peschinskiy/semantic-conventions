@@ -15,16 +15,17 @@ groups:
           3. OS-dependent machine ID
           4. User-provided value
 
-          When `host.id` is derived from a cloud or VM-vendor instance, the resource SHOULD also carry the corresponding attribute identifying that instance, so that the source of the `host.id` value can be unambiguously determined.
+          When `host.id` is derived from a cloud or VM-vendor instance, the resource SHOULD also carry the corresponding `cloud.provider` and `cloud.platform` attributes identifying that vendor, so that the source of the `host.id` value can be unambiguously determined.
 
           The following environments are currently recognized:
 
-          | Environment | `host.id` source |
-          | --- | --- |
-          | AWS EC2 | EC2 instance ID |
-          | AWS EKS | EC2 instance ID |
-          | GCP Compute Engine | GCE instance ID |
-          | GCP GKE | GCE instance ID |
+          | Environment | `host.id` source | `cloud.provider` | `cloud.platform` |
+          | --- | --- | --- | --- |
+          | AWS EC2 | EC2 instance ID | `aws` | `aws_ec2` |
+          | AWS EKS (node) | EC2 instance ID | `aws` | `aws_eks` |
+          | Azure VM | `vmId` | `azure` | `azure.vm` |
+          | GCP Compute Engine | GCE instance ID | `gcp` | `gcp_compute_engine` |
+          | GCP GKE (node) | GCE instance ID | `gcp` | `gcp_kubernetes_engine` |
 
           **Non-privileged Machine ID Lookup**
 
